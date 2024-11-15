@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: your_db_user
+      POSTGRES_PASSWORD: your_db_password
+      POSTGRES_DB: your_db_name
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - springboot-network
+
+  app:
+    build:
+      context: .  # Adjust this if your Dockerfile is in a different directory
+    image: java-refactoring-test-image
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/your_db_name
+      SPRING_DATASOURCE_USERNAME: your_db_user
+      SPRING_DATASOURCE_PASSWORD: your_db_password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop  # or create-drop based on your requirements
+      #SPRING_PROFILES_ACTIVE: docker  # Custom profile for Docker, if you have one
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - springboot-network
+
+volumes:
+  postgres_data:
+
+networks:
+  springboot-network:

@@ -1,98 +1,109 @@
 package com.sap.refactoring.web.controller;
 
-import java.util.ArrayList;
+import com.sap.refactoring.exceptions.InvalidUserException;
+import com.sap.refactoring.exceptions.UserNotFoundException;
+import com.sap.refactoring.model.UserDto;
+import com.sap.refactoring.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-
-import com.sap.refactoring.users.User;
-import com.sap.refactoring.users.UserDao;
-
-@Controller
+/**
+ * REST Controller for managing user-related operations.
+ */
+@RestController
 @RequestMapping("/users")
-public class UserController
-{
-	public UserDao userDao;
+public class UserController {
 
-	@GetMapping("add/")
-	public ResponseEntity addUser(@RequestParam("name") String name,
-	                              @RequestParam("email") String email,
-	                              @RequestParam("role") List<String> roles) {
+	private final UserService userService;
 
-		User user = new User();
-		user.setName(name);
-		user.setEmail(email);
-		user.setRoles(roles);
-
-		if (userDao == null) {
-			userDao = UserDao.getUserDao();
-		}
-
-		userDao.saveUser(user);
-		return ResponseEntity.ok(user);
+	/**
+	 * Constructs a UserController with injected UserService.
+	 *
+	 * @param userService the user service for handling business logic.
+	 */
+	@Autowired
+	public UserController(UserService userService) {
+		this.userService = userService;
 	}
 
-	@GetMapping("update/")
-	public ResponseEntity updateUser(@RequestParam("name") String name,
-	                           @RequestParam("email") String email,
-	                           @RequestParam("role") List<String> roles) {
-
-		User user = new User();
-		user.setName(name);
-		user.setEmail(email);
-		user.setRoles(roles);
-
-		if (userDao == null) {
-			userDao = UserDao.getUserDao();
+	/**
+	 * Creates a new user.
+	 *
+	 * @param userDto the user data to create.
+	 * @return the created user.
+	 */
+	@PostMapping("/add")
+	public ResponseEntity<UserDto> addUser(@RequestBody UserDto userDto) {
+		try {
+			return new ResponseEntity<>(userService.addUser(userDto), HttpStatus.CREATED);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(null);
+		} catch (InvalidUserException e) {
+			return ResponseEntity.badRequest().body(null);
 		}
-
-		userDao.updateUser(user);
-		return ResponseEntity.ok(user);
 	}
-	@GetMapping("delete/")
-	public ResponseEntity deleteUser(@RequestParam("name") String name,
-	                           @RequestParam("email") String email,
-	                           @RequestParam("role") List<String> roles) {
-		User user = new User();
-		user.setName(name);
-		user.setEmail(email);
-		user.setRoles(roles);
 
-		if (userDao == null) {
-			userDao = UserDao.getUserDao();
+	/**
+	 * Updates an existing user.
+	 *
+	 * @param id      the ID of the user to update.
+	 * @param userDto the updated user data.
+	 * @return the updated user or 404 if not found.
+	 */
+	@PutMapping("update/{id}")
+	public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @RequestBody UserDto userDto) {
+		try {
+			UserDto updatedUser = userService.updateUser(id, userDto);
+			if (updatedUser != null) {
+				return ResponseEntity.ok(updatedUser);
+			}
+		} catch (UserNotFoundException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
-
-		userDao.deleteUser(user);
-		return ResponseEntity.ok(user);
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 	}
-	@GetMapping("find/")
-	public ResponseEntity getUsers() {
 
-		ApplicationContext context = new ClassPathXmlApplicationContext(new String[] {
-				"classpath:/application-config.xml"
-		});
-		userDao = context.getBean(UserDao.class);
-		List<User> users = userDao.getUsers();
-		if (users == null) {
-			users = new ArrayList<>();
+	/**
+	 * Deletes a user.
+	 *
+	 * @param id the ID of the user to delete.
+	 * @return a 204 status if deleted or 404 if not found.
+	 */
+	@DeleteMapping("/delete/{id}")
+	public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+		if (userService.deleteUser(id)) {
+			return ResponseEntity.noContent().build();
 		}
-
-		return ResponseEntity.status(200).body(users);
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 	}
-	@GetMapping("search/")
-	public ResponseEntity findUser(@RequestParam("name") String name) {
 
-		if (userDao == null) {
-			userDao = UserDao.getUserDao();
+	/**
+	 * Retrieves all users.
+	 *
+	 * @return a list of all users.
+	 */
+	@GetMapping("find")
+	public ResponseEntity<List<UserDto>> getAllUsers() {
+		List<UserDto> users = userService.getAllUsers();
+		return users.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(users);
+	}
+
+	/**
+	 * Finds a user by name.
+	 *
+	 * @param name the name of the user to find.
+	 * @return the user if found, or 404 if not found.
+	 */
+	@GetMapping("/search")
+	public ResponseEntity<UserDto> findUser(@RequestParam("name") String name) {
+		UserDto user = userService.findUserByName(name);
+		if (user != null) {
+			return ResponseEntity.ok(user);
 		}
-
-		User user = userDao.findUser(name);
-		return ResponseEntity.ok(user);
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 	}
 }
