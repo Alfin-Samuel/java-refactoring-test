@@ -77,20 +77,20 @@ public class UserService {
 
         Optional<UserEntity> existingUser = userRepository.findById(userId);
 
-        return existingUser.map(user -> {
-            if (!user.getEmail().equals(userDto.getEmail())) {
-                checkEmailUniqueness(userDto.getEmail());
-            }
-            user.setName(userDto.getName());
-            user.setEmail(userDto.getEmail());
-            user.setRoles(userDto.getRoles());
-            UserEntity updatedUser = userRepository.save(user);
-            logger.info("User with ID {} updated successfully", userId);
-            return userMapper.toDto(updatedUser);
-        }).orElseThrow(() -> {
-            logger.warn("User with ID {} not found for update", userId);
-            return new UserNotFoundException("User with ID " + userId + " not found.");
-        });
+        if (!existingUser.isPresent()) {
+            throw new UserNotFoundException("User with ID " + userId + " not found.");
+        }
+
+        UserEntity user = existingUser.get();
+        if (!user.getEmail().equals(userDto.getEmail())) {
+            checkEmailUniqueness(userDto.getEmail());
+        }
+        user.setName(userDto.getName());
+        user.setEmail(userDto.getEmail());
+        user.setRoles(userDto.getRoles());
+        UserEntity updatedUser = userRepository.save(user);
+        logger.info("User with ID {} updated successfully", userId);
+        return userMapper.toDto(updatedUser);
     }
 
     /**
