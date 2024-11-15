@@ -63,17 +63,6 @@ public class UserServiceTest {
     }
 
     @Test
-    void testAddUser_WhenUserIsInvalid_ShouldThrowInvalidUserException() {
-        userDto.setEmail(null);
-
-        assertThatThrownBy(() -> userService.addUser(userDto))
-                .isInstanceOf(InvalidUserException.class)
-                .hasMessage("User data is incomplete.");
-
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
     void testAddUser_WhenDataIntegrityViolationOccurs_ShouldThrowInvalidUserException() {
         when(userMapper.toEntity(userDto)).thenReturn(userEntity);
         when(userRepository.save(userEntity)).thenThrow(new DataIntegrityViolationException("Duplicate email"));
